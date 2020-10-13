@@ -2,7 +2,6 @@ albumentations>=0.3.2
 imagecorruptions
 matplotlib
 mmcv==0.5.9
-numpy
 pandas
 sklearn
 pretrainedmodels
