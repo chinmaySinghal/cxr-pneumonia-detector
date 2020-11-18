@@ -44,6 +44,36 @@ class MDAIModel:
         )
         self.model = self.model.eval()
 
+    def convert_image_to_uint8(self, img, is_dicom=True):
+        """Converts an image to 8bit dtype and monochrome2 (if dicom supplied).
+        @img: numpy array or pydicom object -> Represents input image
+        @is_dicom: bool -> Represents whether image supplied is dicom or not
+        """
+        monochrome1 = False
+        if is_dicom:
+            scale_slope = 1
+            scale_intercept = 0
+            if "RescaleSlope" in img:
+                scale_slope = int(img.RescaleSlope)
+            if "RescaleIntercept" in img:
+                scale_intercept = int(img.RescaleIntercept)
+            if img.PhotometricInterpretation == "MONOCHROME1":
+                monochrome1 = True
+
+            img = img.pixel_array
+            img = img + scale_intercept
+            img = img * scale_slope
+
+        if img.dtype != np.uint8:
+            img = (img - img.min()) / (img.max() - img.min())
+            img *= 255.0
+            img = img.astype("uint8")
+
+        if monochrome1:
+            img = 255 - img
+
+        return img
+
     def prepare_input(self, image):
         # Need to save temporary image file
         rand_img = os.path.join("/tmp", "img-{}.png".format(np.random.randint(1e10)))
@@ -94,7 +124,7 @@ class MDAIModel:
 
             try:
                 ds = pydicom.dcmread(BytesIO(file["content"]))
-                arr = ds.pixel_array
+                arr = self.convert_image_to_uint8(ds)
                 result = self._predict(arr)
                 if len(result) == 0:
                     output = {
